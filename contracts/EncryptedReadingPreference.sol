@@ -59,6 +59,17 @@ contract EncryptedReadingPreference is SepoliaConfig {
         emit CategoryPreferenceAdded(msg.sender, categoryId, block.timestamp);
     }
 
+    /// @notice Get the encrypted count for a user's category
+    /// @param user The user address
+    /// @param categoryId The category ID
+    /// @return encryptedCount The encrypted category count
+    function getEncryptedCategoryCount(address user, uint32 categoryId)
+        external
+        view
+        returns (euint32 encryptedCount)
+    {
+        return _encryptedCategoryCounts[user][categoryId];
+    }
 
     /// @notice Check if a user has initialized a category
     /// @param user The user address
