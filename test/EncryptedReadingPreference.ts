@@ -38,6 +38,11 @@ describe("EncryptedReadingPreference", function () {
     ({ contract, contractAddress } = await deployFixture());
   });
 
+  it("encrypted count should be uninitialized after deployment", async function () {
+    const encryptedCount = await contract.getEncryptedCategoryCount(signers.alice.address, 1);
+    // Expect initial count to be bytes32(0) after deployment
+    expect(encryptedCount).to.eq(ethers.ZeroHash);
+  });
 
   it("add preference for category 1 (Science Fiction)", async function () {
     const categoryId = 1;
