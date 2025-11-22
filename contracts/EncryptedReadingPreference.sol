@@ -93,5 +93,46 @@ contract EncryptedReadingPreference is SepoliaConfig {
     function categoryExists(address user, uint32 categoryId) external view returns (bool) {
         return _categoryExists[user][categoryId];
     }
+
+    /// @notice Add multiple category preferences in a single transaction
+    /// @param categoryIds Array of category IDs to add preferences for
+    /// @param encryptedCounts Array of encrypted counts for each category
+    /// @param inputProof The FHE input proof for all encrypted values
+    function batchAddPreferences(
+        uint32[] calldata categoryIds,
+        externalEuint32[] calldata encryptedCounts,
+        bytes calldata inputProof
+    ) external {
+        require(categoryIds.length == encryptedCounts.length, "Array length mismatch");
+        require(categoryIds.length > 0, "Cannot add empty batch");
+        require(categoryIds.length <= 10, "Batch size limited to 10 preferences for gas efficiency");
+
+        for (uint256 i = 0; i < categoryIds.length; i++) {
+            uint32 categoryId = categoryIds[i];
+            euint32 count = FHE.fromExternal(encryptedCounts[i], inputProof);
+
+            // Initialize if first time for this category
+            if (!_hasInitialized[msg.sender][categoryId]) {
+                _encryptedCategoryCounts[msg.sender][categoryId] = count;
+                _hasInitialized[msg.sender][categoryId] = true;
+
+                // Track this category for the user
+                if (!_categoryExists[msg.sender][categoryId]) {
+                    _userCategories[msg.sender].push(categoryId);
+                    _categoryExists[msg.sender][categoryId] = true;
+                }
+            } else {
+                // Add to existing count
+                _encryptedCategoryCounts[msg.sender][categoryId] = FHE.add(
+                    _encryptedCategoryCounts[msg.sender][categoryId],
+                    count
+                );
+            }
+
+            emit CategoryPreferenceAdded(msg.sender, categoryId, block.timestamp);
+        }
+
+        emit StatisticsUpdated(msg.sender);
+    }
 }
 
