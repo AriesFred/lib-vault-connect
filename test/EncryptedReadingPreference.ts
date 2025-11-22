@@ -44,6 +44,59 @@ describe("EncryptedReadingPreference", function () {
     expect(encryptedCount).to.eq(ethers.ZeroHash);
   });
 
+  it("should provide preference statistics for comprehensive user analytics", async function () {
+    const categoryId1 = 1;
+    const categoryId2 = 2;
+    const clearCount1 = 5;
+    const clearCount2 = 3;
+
+    // Add preferences for two categories
+    const encryptedCount1 = await fhevm
+      .createEncryptedInput(contractAddress, signers.alice.address)
+      .add32(clearCount1)
+      .encrypt();
+
+    const encryptedCount2 = await fhevm
+      .createEncryptedInput(contractAddress, signers.alice.address)
+      .add32(clearCount2)
+      .encrypt();
+
+    await contract.connect(signers.alice).addCategoryPreference(categoryId1, encryptedCount1.handles[0], encryptedCount1.inputProof);
+    await contract.connect(signers.alice).addCategoryPreference(categoryId2, encryptedCount2.handles[0], encryptedCount2.inputProof);
+
+    const [totalCategories, totalPreferences, averagePreferences] = await contract.getPreferenceStatistics(signers.alice.address);
+    expect(totalCategories).to.equal(2);
+
+    // Verify total and average calculations (encrypted values)
+    expect(totalPreferences).to.not.eq(ethers.ZeroHash);
+    expect(averagePreferences).to.not.eq(ethers.ZeroHash);
+  });
+
+  it("should support batch preference addition for multiple categories", async function () {
+    const categoryIds = [1, 2, 3];
+    const clearCounts = [2, 4, 6];
+
+    // Create encrypted inputs for batch
+    const encryptedInputs = [];
+    for (const count of clearCounts) {
+      const encryptedInput = await fhevm
+        .createEncryptedInput(contractAddress, signers.alice.address)
+        .add32(count)
+        .encrypt();
+      encryptedInputs.push(encryptedInput);
+    }
+
+    // Batch add preferences
+    await contract.connect(signers.alice).batchAddPreferences(
+      categoryIds,
+      encryptedInputs.map(e => e.handles[0]),
+      encryptedInputs[0].inputProof // Use first proof for simplicity
+    );
+
+    const userCategories = await contract.getUserCategories(signers.alice.address);
+    expect(userCategories.length).to.equal(3);
+  });
+
   it("add preference for category 1 (Science Fiction)", async function () {
     const categoryId = 1;
     const clearCount = 1;
