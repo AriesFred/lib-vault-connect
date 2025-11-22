@@ -1,0 +1,26 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+coverage/
+.nyc_output/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cache/
+artifacts/
+typechain-types/
+types/
+fhevmTemp/
+deployments/localhost/
+deployments/hardhat/
+
+# Keep MP4 files
+!*.mp4
+
