@@ -97,6 +97,31 @@ describe("EncryptedReadingPreference", function () {
     expect(userCategories.length).to.equal(3);
   });
 
+  it("should validate batch size limits for gas efficiency", async function () {
+    // Create 11 categories (exceeds limit)
+    const categoryIds = Array(11).fill(null).map((_, i) => i + 1);
+    const clearCounts = Array(11).fill(2);
+
+    // Create encrypted inputs for batch
+    const encryptedInputs = [];
+    for (const count of clearCounts) {
+      const encryptedInput = await fhevm
+        .createEncryptedInput(contractAddress, signers.alice.address)
+        .add32(count)
+        .encrypt();
+      encryptedInputs.push(encryptedInput);
+    }
+
+    // Should reject batch larger than 10
+    await expect(
+      contract.connect(signers.alice).batchAddPreferences(
+        categoryIds,
+        encryptedInputs.map(e => e.handles[0]),
+        encryptedInputs[0].inputProof
+      )
+    ).to.be.revertedWith("Batch size limited to 10 preferences for gas efficiency");
+  });
+
   it("add preference for category 1 (Science Fiction)", async function () {
     const categoryId = 1;
     const clearCount = 1;
