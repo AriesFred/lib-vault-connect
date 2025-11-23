@@ -7,6 +7,7 @@ import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 /// @title EncryptedReadingPreference - Private Reading Preference System
 /// @notice Allows users to record encrypted reading category preferences
 /// @dev Uses FHE to store and accumulate encrypted category counts on-chain
+/// Enhanced with batch operations and comprehensive analytics
 contract EncryptedReadingPreference is SepoliaConfig {
     // Mapping from user address to category ID to encrypted count
     mapping(address => mapping(uint32 => euint32)) private _encryptedCategoryCounts;
