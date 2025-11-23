@@ -2,6 +2,11 @@
 
 A decentralized application for storing and managing encrypted reading preferences using Fully Homomorphic Encryption (FHE) on the blockchain.
 
+## 🔗 Links
+
+- **📹 Demo Video**: [Watch on GitHub](https://github.com/AriesFred/lib-vault-connect/blob/main/liib.mp4)
+- **🌐 Live Demo**: [View on Vercel](https://liib-vault-demo.vercel.app/)
+
 ## Features
 
 - **Encrypted Category Storage**: Users can select reading categories that are encrypted using FHE
