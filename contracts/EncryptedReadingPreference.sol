@@ -165,5 +165,11 @@ contract EncryptedReadingPreference is SepoliaConfig {
 
         return (totalCategories, totalPreferences, averagePreferences);
     }
+
+    /// @notice Get current contract version
+    /// @return Version string
+    function version() external pure returns (string memory) {
+        return "1.0.0";
+    }
 }
 
