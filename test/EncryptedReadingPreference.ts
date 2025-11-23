@@ -122,6 +122,11 @@ describe("EncryptedReadingPreference", function () {
     ).to.be.revertedWith("Batch size limited to 10 preferences for gas efficiency");
   });
 
+  it("should return correct contract version", async function () {
+    const version = await contract.version();
+    expect(version).to.equal("1.0.0");
+  });
+
   it("add preference for category 1 (Science Fiction)", async function () {
     const categoryId = 1;
     const clearCount = 1;
