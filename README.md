@@ -5,7 +5,7 @@ A decentralized application for storing and managing encrypted reading preferenc
 ## 🔗 Links
 
 - **📹 Demo Video**: [Watch on GitHub](https://github.com/AriesFred/lib-vault-connect/blob/main/liib.mp4)
-- **🌐 Live Demo**: [View on Vercel](https://liib-vault-demo.vercel.app/)
+- **🌐 Live Demo**: [View on Vercel](https://liib-vault.vercel.app/)
 
 ## Features
 
