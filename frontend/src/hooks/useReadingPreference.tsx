@@ -28,6 +28,62 @@ interface UseReadingPreferenceState {
 
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
 
+// Local storage keys
+const STORAGE_KEY_DECRYPTED_COUNTS = 'liib-vault-decrypted-counts';
+const STORAGE_KEY_USER_ADDRESS = 'liib-vault-user-address';
+const STORAGE_KEY_CONTRACT_ADDRESS = 'liib-vault-contract-address';
+
+// Helper functions for persistent storage
+const saveDecryptedCounts = (address: string, counts: Map<number, number>) => {
+  try {
+    const data = {
+      address,
+      counts: Array.from(counts.entries()),
+      timestamp: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY_DECRYPTED_COUNTS, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY_USER_ADDRESS, address);
+  } catch (error) {
+    console.warn('Failed to save decrypted counts to localStorage:', error);
+  }
+};
+
+const loadDecryptedCounts = (address: string): Map<number, number> => {
+  try {
+    const storedAddress = localStorage.getItem(STORAGE_KEY_USER_ADDRESS);
+    if (storedAddress !== address) {
+      // Different user, clear old data
+      return new Map();
+    }
+
+    const storedData = localStorage.getItem(STORAGE_KEY_DECRYPTED_COUNTS);
+    if (!storedData) return new Map();
+
+    const data = JSON.parse(storedData);
+
+    // Check if data is not too old (24 hours)
+    const isExpired = Date.now() - data.timestamp > 24 * 60 * 60 * 1000;
+    if (isExpired) {
+      localStorage.removeItem(STORAGE_KEY_DECRYPTED_COUNTS);
+      return new Map();
+    }
+
+    return new Map(data.counts);
+  } catch (error) {
+    console.warn('Failed to load decrypted counts from localStorage:', error);
+    return new Map();
+  }
+};
+
+const clearDecryptedCounts = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY_DECRYPTED_COUNTS);
+    localStorage.removeItem(STORAGE_KEY_USER_ADDRESS);
+  } catch (error) {
+    console.warn('Failed to clear decrypted counts from localStorage:', error);
+  }
+};
+
 export function useReadingPreference(): UseReadingPreferenceState {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -78,6 +134,41 @@ export function useReadingPreference(): UseReadingPreferenceState {
     }
     // Keep loading true on error to prevent button clicks
   }, [fhevmStatus]);
+
+  // Load persistent decrypted data when user connects
+  useEffect(() => {
+    if (address && isConnected) {
+      const persistentData = loadDecryptedCounts(address);
+      console.log('[DEBUG] Loading persistent data for user', address, ':', Array.from(persistentData.entries()));
+      if (persistentData.size > 0) {
+        setDecryptedCounts(persistentData);
+        setMessage(`Loaded ${persistentData.size} decrypted preferences from storage`);
+      }
+    } else {
+      // Clear data when user disconnects
+      setDecryptedCounts(new Map());
+      setEncryptedCounts(new Map());
+      setUserCategories([]);
+      clearDecryptedCounts();
+    }
+  }, [address, isConnected]);
+
+  // Clear local storage when contract address changes (redeploy)
+  useEffect(() => {
+    if (CONTRACT_ADDRESS) {
+      // Check if this is a new deployment by comparing with stored contract address
+      const storedContractAddress = localStorage.getItem(STORAGE_KEY_CONTRACT_ADDRESS);
+      if (storedContractAddress && storedContractAddress !== CONTRACT_ADDRESS) {
+        // Contract was redeployed, clear all local data
+        clearDecryptedCounts();
+        setDecryptedCounts(new Map());
+        setEncryptedCounts(new Map());
+        setUserCategories([]);
+        setMessage('Contract redeployed, cleared local data');
+      }
+      localStorage.setItem(STORAGE_KEY_CONTRACT_ADDRESS, CONTRACT_ADDRESS);
+    }
+  }, [CONTRACT_ADDRESS]);
 
   // Convert walletClient to ethers signer
   useEffect(() => {
@@ -149,9 +240,13 @@ export function useReadingPreference(): UseReadingPreferenceState {
         );
         await tx.wait();
 
+        // Update encrypted counts immediately
+        const handle = typeof encrypted.handles[0] === "string" ? encrypted.handles[0] : ethers.hexlify(encrypted.handles[0]);
+        setEncryptedCounts(prev => new Map(prev.set(categoryId, handle.toLowerCase())));
+
         setMessage("Preference added successfully. Refreshing...");
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         await loadUserCategories();
       } catch (error: any) {
         const errorMessage = error.reason || error.message || String(error);
@@ -272,7 +367,14 @@ export function useReadingPreference(): UseReadingPreferenceState {
         );
 
         const decrypted = Number(decryptedResult[handle] || 0);
-        setDecryptedCounts(prev => new Map(prev.set(categoryId, decrypted)));
+        setDecryptedCounts(prev => {
+          const newCounts = new Map(prev.set(categoryId, decrypted));
+          // Save to persistent storage
+          if (address) {
+            saveDecryptedCounts(address, newCounts);
+          }
+          return newCounts;
+        });
         setMessage(`Decrypted count for category ${categoryId}: ${decrypted}`);
       } catch (error: any) {
         console.error("[useReadingPreference] Error decrypting:", error);
@@ -300,9 +402,28 @@ export function useReadingPreference(): UseReadingPreferenceState {
 
       const contract = new ethers.Contract(CONTRACT_ADDRESS, EncryptedReadingPreferenceABI, ethersProvider);
       const categories = await contract.getUserCategories(address);
-      
+
       const categoryIds = categories.map((cat: bigint) => Number(cat));
       setUserCategories(categoryIds);
+
+      // Load encrypted handles for all categories
+      const newEncryptedCounts = new Map();
+      for (const categoryId of categoryIds) {
+        try {
+          const encryptedCount = await contract.getEncryptedCategoryCount(address, categoryId);
+          let handle = typeof encryptedCount === "string" ? encryptedCount : ethers.hexlify(encryptedCount);
+          if (handle && handle.startsWith("0x")) {
+            handle = handle.toLowerCase();
+          }
+          if (handle && handle !== "0x" && handle.length === 66) {
+            newEncryptedCounts.set(categoryId, handle);
+          }
+        } catch (error) {
+          // Skip categories that don't have encrypted data yet
+          console.warn(`Failed to load encrypted data for category ${categoryId}:`, error);
+        }
+      }
+      setEncryptedCounts(newEncryptedCounts);
     } catch (error: any) {
       console.error("[useReadingPreference] Error loading categories:", error);
       setMessage(`Error loading categories: ${error.message || String(error)}`);

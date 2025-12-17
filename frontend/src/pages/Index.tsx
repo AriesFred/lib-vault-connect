@@ -1,8 +1,7 @@
 import Logo from "@/components/Logo";
-import Hero from "@/components/Hero";
-import PreferenceLogger from "@/components/PreferenceLogger";
-import PreferenceViewer from "@/components/PreferenceViewer";
+import Dashboard from "@/components/Dashboard";
 import WalletConnect from "@/components/WalletConnect";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Index = () => {
   return (
@@ -10,16 +9,15 @@ const Index = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Logo />
-          <WalletConnect />
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <WalletConnect />
+          </div>
         </div>
       </header>
-      
+
       <main className="pt-20">
-        <Hero />
-        <div className="container mx-auto px-4 py-8 space-y-8">
-          <PreferenceLogger />
-          <PreferenceViewer />
-        </div>
+        <Dashboard />
       </main>
     </div>
   );

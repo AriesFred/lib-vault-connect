@@ -23,6 +23,7 @@ contract EncryptedReadingPreference is SepoliaConfig {
 
     event CategoryPreferenceAdded(address indexed user, uint32 categoryId, uint256 timestamp);
     event CategoryPreferenceDecrypted(address indexed user, uint32 categoryId, uint256 decryptedCount);
+    event StatisticsUpdated(address indexed user);
 
     /// @notice Add preference count for a category
     /// @param categoryId The category ID (e.g., 1=Science Fiction, 2=Mystery, etc.)
@@ -140,30 +141,26 @@ contract EncryptedReadingPreference is SepoliaConfig {
     /// @param user The user address
     /// @return totalCategories Total number of categories the user has preferences for
     /// @return totalPreferences Total encrypted count across all categories
-    /// @return averagePreferences Average encrypted preferences per category
     function getPreferenceStatistics(address user)
         external
-        view
-        returns (uint256 totalCategories, euint32 totalPreferences, euint32 averagePreferences)
+        returns (uint256 totalCategories, euint32 totalPreferences)
     {
         totalCategories = _userCategories[user].length;
         if (totalCategories == 0) {
-            totalPreferences = FHE.asEuint32(0);
-            averagePreferences = FHE.asEuint32(0);
-            return (totalCategories, totalPreferences, averagePreferences);
+            totalPreferences = FHE.asEuint32(uint32(0));
+            return (totalCategories, totalPreferences);
         }
 
         // Calculate total preferences across all categories
-        euint32 total = FHE.asEuint32(0);
+        euint32 total = FHE.asEuint32(uint32(0));
         for (uint256 i = 0; i < totalCategories; i++) {
             uint32 categoryId = _userCategories[user][i];
             total = FHE.add(total, _encryptedCategoryCounts[user][categoryId]);
         }
 
         totalPreferences = total;
-        averagePreferences = FHE.div(total, FHE.asEuint32(totalCategories));
 
-        return (totalCategories, totalPreferences, averagePreferences);
+        return (totalCategories, totalPreferences);
     }
 
     /// @notice Get current contract version
